@@ -33,7 +33,7 @@
   }
   
   .clear-button {
-    background-color: #f0f0f0;
+    background-color: #0d8bf0;
     border: none;
     padding: 8px 12px;
     border-radius: 4px;
@@ -43,6 +43,7 @@
   
   .clear-button:hover {
     background-color: #e0e0e0;
+    transform: scale(1.05);
   }
   
   .logout-button {
