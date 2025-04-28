@@ -8,7 +8,6 @@ import './App.css';
 
 // 設定を読み込む関数
 const loadConfig = () => {
-  // ウィンドウオブジェクトから設定を取得
   if (window.REACT_APP_CONFIG) {
     return {
       apiEndpoint: window.REACT_APP_CONFIG.apiEndpoint,
@@ -17,8 +16,6 @@ const loadConfig = () => {
       region: window.REACT_APP_CONFIG.region,
     };
   }
-  
-  // 環境変数から設定を取得（ローカル開発用）
   return {
     apiEndpoint: process.env.REACT_APP_API_ENDPOINT || 'YOUR_API_ENDPOINT',
     userPoolId: process.env.REACT_APP_USER_POOL_ID || 'YOUR_USER_POOL_ID',
@@ -27,10 +24,8 @@ const loadConfig = () => {
   };
 };
 
-// 設定を取得
 const config = loadConfig();
 
-// Amplify設定
 Amplify.configure({
   Auth: {
     region: config.region,
@@ -39,15 +34,14 @@ Amplify.configure({
   },
 });
 
-// ChatInterfaceコンポーネントの定義
 function ChatInterface({ signOut, user }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);  // ダークモード追加
   const messagesEndRef = useRef(null);
 
-  // メッセージが追加されたら自動スクロール
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -56,64 +50,56 @@ function ChatInterface({ signOut, user }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // チャットメッセージ送信
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
     const userMessage = input;
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
     setLoading(true);
     setError(null);
 
     try {
-      // 認証トークンを取得
       const session = await Auth.currentSession();
       const idToken = session.getIdToken().getJwtToken();
 
-      const response = await axios.post(config.apiEndpoint, {
-        message: userMessage,
-        conversationHistory: messages
-      }, {
-        headers: {
-          'Authorization': idToken,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await axios.post(
+        config.apiEndpoint,
+        { message: userMessage, conversationHistory: messages },
+        { headers: { Authorization: idToken, 'Content-Type': 'application/json' } }
+      );
 
       if (response.data.success) {
-        setMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
+        setMessages((prev) => [...prev, { role: 'assistant', content: response.data.response }]);
       } else {
         setError('応答の取得に失敗しました');
       }
     } catch (err) {
-      console.error("API Error:", err);
+      console.error('API Error:', err);
       setError(`エラーが発生しました: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // 会話をクリア
   const clearConversation = () => {
     setMessages([]);
   };
 
   return (
-    <div className="App">
+    <div className={`App ${darkMode ? 'dark-mode' : ''}`}>
       <header className="App-header">
         <h1>Bedrock LLM チャットボット</h1>
         <div className="header-buttons">
-          <button className="clear-button" onClick={clearConversation}>
-            会話をクリア
-          </button>
-          <button className="logout-button" onClick={signOut}>
-            ログアウト ({user.username})
+          <button className="clear-button" onClick={clearConversation}>会話をクリア</button>
+          <button className="logout-button" onClick={signOut}>ログアウト ({user.username})</button>
+          <button className="dark-mode-toggle" onClick={() => setDarkMode(!darkMode)}>
+            {darkMode ? 'ライトモード' : 'ダークモード'}
           </button>
         </div>
       </header>
-      
+
       <main className="chat-container">
         <div className="messages-container">
           {messages.length === 0 ? (
@@ -132,7 +118,7 @@ function ChatInterface({ signOut, user }) {
               </div>
             ))
           )}
-          
+
           {loading && (
             <div className="message assistant loading">
               <div className="typing-indicator">
@@ -142,16 +128,12 @@ function ChatInterface({ signOut, user }) {
               </div>
             </div>
           )}
-          
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
-          
+
+          {error && <div className="error-message">{error}</div>}
+
           <div ref={messagesEndRef} />
         </div>
-        
+
         <form onSubmit={handleSubmit} className="input-form">
           <textarea
             value={input}
@@ -165,15 +147,11 @@ function ChatInterface({ signOut, user }) {
               }
             }}
           />
-          <button type="submit" disabled={loading || !input.trim()}>
-            送信
-          </button>
+          <button type="submit" disabled={loading || !input.trim()}>送信</button>
         </form>
       </main>
-      
-      <footer>
-        <p>Powered by Amazon Bedrock</p>
-      </footer>
+
+      <footer><p>Powered by Amazon Bedrock</p></footer>
     </div>
   );
 }
@@ -181,9 +159,7 @@ function ChatInterface({ signOut, user }) {
 function App() {
   return (
     <Authenticator>
-      {({ signOut, user }) => (
-        <ChatInterface signOut={signOut} user={user} />
-      )}
+      {({ signOut, user }) => <ChatInterface signOut={signOut} user={user} />}
     </Authenticator>
   );
 }
