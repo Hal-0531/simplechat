@@ -237,13 +237,13 @@
   /* AWS Amplify UI のカスタマイズ */
   :root {
     /* プライマリカラー */
-    --amplify-colors-brand-primary-10: #f0f8ff;
-    --amplify-colors-brand-primary-20: #d1e9ff;
-    --amplify-colors-brand-primary-40: #a3d2ff;
-    --amplify-colors-brand-primary-60: #75bbff;
-    --amplify-colors-brand-primary-80: #47a3ff;
-    --amplify-colors-brand-primary-90: #2196f3;
-    --amplify-colors-brand-primary-100: #0d8bf0;
+    --amplify-colors-brand-primary-10: #d3d3d3;
+    --amplify-colors-brand-primary-20: #808080;
+    --amplify-colors-brand-primary-40: #a3a3a3;
+    --amplify-colors-brand-primary-60: #bbbbbb;
+    --amplify-colors-brand-primary-80: #404040;
+    --amplify-colors-brand-primary-90: #404040;
+    --amplify-colors-brand-primary-100: #0a0a0a;
     
     /* セカンダリカラー */
     --amplify-colors-brand-secondary-80: #ff9900;
