@@ -104,7 +104,7 @@ function ChatInterface({ signOut, user }) {
         <div className="messages-container">
           {messages.length === 0 ? (
             <div className="welcome-message">
-              <h2>Bedrock Chatbot へようこそ！</h2>
+              <h2>Hal-0531のchatbotへようこそ！</h2>
               <p>何でも質問してください。</p>
             </div>
           ) : (
