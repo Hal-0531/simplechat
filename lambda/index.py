@@ -6,7 +6,7 @@ import urllib.request
 # 基本設定
 FASTAPI_URL = os.environ.get(
     "FASTAPI_URL",        # 環境変数があったら対応するが、APIずっと起動できないので、ここで設定
-    "https://7b22-34-126-163-104.ngrok-free.app"   # FastAPI の URL を指定
+    "https://ff9a-34-16-180-215.ngrok-free.app"   # FastAPI の URL を指定
 ).rstrip("/")             # 末尾に / が来ても揃うようにした
 
 ENDPOINT = f"{FASTAPI_URL}/generate"
@@ -14,7 +14,7 @@ TIMEOUT  = 60             # / s
 
 def make_prompt(history, newest):
     """Bedrockの会話履歴を 1 本のプロンプト文字列に整形し FastAPI へ送る工程"""
-    buf = ["こんちゃーす\n"]
+    buf = ["こんにちは"]
     for m in history:
         role = "ユーザー" if m["role"] == "user" else "アシスタント"
         buf.append(f"{role}: {m['content']}\n")
@@ -32,9 +32,8 @@ def call_fastapi(prompt: str) -> str:
     raw = urllib.request.urlopen(req, timeout=TIMEOUT).read()
     return json.loads(raw.decode())["generated_text"].strip()
 
-# ------------------- Lambda ハンドラー -------------------
 def lambda_handler(event, context):
-    print("Received event:", json.dumps(event))                 # デバッグ用
+    print("Received event:", json.dumps(event))                 
 
     # Cognito ユーザーが付与されていればログに残す
     if (u := event.get("requestContext", {}).get("authorizer", {}).get("claims")):
@@ -47,7 +46,7 @@ def lambda_handler(event, context):
 
     # 会話履歴をまとめて 1 プロンプトに
     prompt = make_prompt(history, user_msg)
-    print("Prompt for FastAPI:", prompt[:120], "...")           # 長い場合は冒頭のみ
+    print("Prompt for FastAPI:", prompt[:120], "...")           
 
     # 推論の呼び出し
     assistant_reply = call_fastapi(prompt)
