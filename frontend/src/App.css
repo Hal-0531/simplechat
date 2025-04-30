@@ -25,6 +25,15 @@
     color: #232f3e;
     font-size: 24px;
   }
+　.dark-mode {
+  　background-color: #222;
+  　color: white;
+　}
+
+　.light-mode {
+  　background-color: white;
+  　color: black;
+　}
   
   /* ヘッダーボタン */
   .header-buttons {
