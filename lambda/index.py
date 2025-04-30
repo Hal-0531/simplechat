@@ -1,69 +1,74 @@
+# lambda/index.py
 import json
+import os
 import urllib.request
-import ssl
 
-# FastAPI のエンドポイント (あなたの API URL に変更)
-FASTAPI_ENDPOINT = "https://dfe8-34-23-144-134.ngrok-free.app/"
+# 基本設定
+FASTAPI_URL = os.environ.get(
+    "FASTAPI_URL",        # 環境変数があったら対応するが、APIずっと起動できないので、ここで設定
+    "https://7b22-34-126-163-104.ngrok-free.app"   # FastAPI の URL を指定
+).rstrip("/")             # 末尾に / が来ても揃うようにした
 
-# SSL 証明書の検証を無効化 (必要に応じて)
-ssl._create_default_https_context = ssl._create_unverified_context
+ENDPOINT = f"{FASTAPI_URL}/generate"
+TIMEOUT  = 60             # / s
 
+def make_prompt(history, newest):
+    """Bedrockの会話履歴を 1 本のプロンプト文字列に整形し FastAPI へ送る工程"""
+    buf = ["こんちゃーす\n"]
+    for m in history:
+        role = "ユーザー" if m["role"] == "user" else "アシスタント"
+        buf.append(f"{role}: {m['content']}\n")
+    buf.append(f"ユーザー: {newest}\nアシスタント: ")
+    return "".join(buf)
+
+def call_fastapi(prompt: str) -> str:
+    """FastAPI /generate に POST し、generated_text を返す工程"""
+    req = urllib.request.Request(
+        ENDPOINT,
+        data=json.dumps({"prompt": prompt}).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+    raw = urllib.request.urlopen(req, timeout=TIMEOUT).read()
+    return json.loads(raw.decode())["generated_text"].strip()
+
+# ------------------- Lambda ハンドラー -------------------
 def lambda_handler(event, context):
-    try:
-        print("Received event:", json.dumps(event))
+    print("Received event:", json.dumps(event))                 # デバッグ用
 
-        # リクエストのパース
-        body = json.loads(event['body'])
-        message = body['message']
+    # Cognito ユーザーが付与されていればログに残す
+    if (u := event.get("requestContext", {}).get("authorizer", {}).get("claims")):
+        print(f"Authenticated user: {u.get('email') or u.get('cognito:username')}")
 
-        print("Processing message:", message)
+    # リクエスト
+    body = json.loads(event["body"])
+    user_msg = body["message"]
+    history  = body.get("conversationHistory", [])
 
-        # FastAPI エンドポイントに送るデータ
-        request_payload = {
-            "prompt": message,
-            "max_new_tokens": 512,
-            "do_sample": True,
-            "temperature": 0.7,
-            "top_p": 0.9
-        }
+    # 会話履歴をまとめて 1 プロンプトに
+    prompt = make_prompt(history, user_msg)
+    print("Prompt for FastAPI:", prompt[:120], "...")           # 長い場合は冒頭のみ
 
-        req = urllib.request.Request(
-            url=FASTAPI_ENDPOINT,
-            data=json.dumps(request_payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
+    # 推論の呼び出し
+    assistant_reply = call_fastapi(prompt)
+    print("Assistant reply:", assistant_reply[:120], "...")
 
-        print("Sending request to FastAPI server...")
+    # 履歴を更新
+    history.append({"role": "user",      "content": user_msg})
+    history.append({"role": "assistant", "content": assistant_reply})
 
-        # FastAPI にリクエストを送信
-        with urllib.request.urlopen(req) as response:
-            response_body = json.loads(response.read().decode("utf-8"))
-
-        print("Received response from FastAPI:", json.dumps(response_body))
-
-        # 応答の検証
-        assistant_response = response_body.get("generated_text", "応答なし")
-
-        # 成功レスポンスの返却
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*"
-            },
-            "body": json.dumps({
-                "success": True,
-                "response": assistant_response
-            })
-        }
-
-    except Exception as error:
-        print("Error:", str(error))
-        return {
-            "statusCode": 500,
-            "body": json.dumps({
-                "success": False,
-                "error": str(error)
-            })
-        }
+    # レスポンス返却
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+            "Access-Control-Allow-Methods": "OPTIONS,POST"
+        },
+        "body": json.dumps({
+            "success": True,
+            "response": assistant_reply,
+            "conversationHistory": history
+        })
+    }
